@@ -1,42 +1,54 @@
-import { useEffect, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { useEffect, useState } from 'react'
+import { Alert, ScrollView, View } from 'react-native'
 
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native'
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated'
 
-import { styles } from './styles';
+import { styles } from './styles'
 
-import { QUIZ } from '../../data/quiz';
-import { historyAdd } from '../../storage/quizHistoryStorage';
+import { QUIZ } from '../../data/quiz'
+import { historyAdd } from '../../storage/quizHistoryStorage'
 
-import { Loading } from '../../components/Loading';
-import { Question } from '../../components/Question';
-import { QuizHeader } from '../../components/QuizHeader';
-import { ConfirmButton } from '../../components/ConfirmButton';
-import { OutlineButton } from '../../components/OutlineButton';
+import { ConfirmButton } from '../../components/ConfirmButton'
+import { Loading } from '../../components/Loading'
+import { OutlineButton } from '../../components/OutlineButton'
+import { Question } from '../../components/Question'
+import { QuizHeader } from '../../components/QuizHeader'
 
 interface Params {
-  id: string;
+  id: string
 }
 
-type QuizProps = typeof QUIZ[0];
+type QuizProps = (typeof QUIZ)[0]
 
 export function Quiz() {
-  const [points, setPoints] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [quiz, setQuiz] = useState<QuizProps>({} as QuizProps);
-  const [alternativeSelected, setAlternativeSelected] = useState<null | number>(null);
+  const [points, setPoints] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [currentQuestion, setCurrentQuestion] = useState(0)
+  const [quiz, setQuiz] = useState<QuizProps>({} as QuizProps)
+  const [alternativeSelected, setAlternativeSelected] = useState<null | number>(
+    null,
+  )
 
-  const { navigate } = useNavigation();
+  const shake = useSharedValue(0)
 
-  const route = useRoute();
-  const { id } = route.params as Params;
+  const { navigate } = useNavigation()
+
+  const route = useRoute()
+  const { id } = route.params as Params
 
   function handleSkipConfirm() {
     Alert.alert('Pular', 'Deseja realmente pular a questão?', [
       { text: 'Sim', onPress: () => handleNextQuestion() },
-      { text: 'Não', onPress: () => { } }
-    ]);
+      { text: 'Não', onPress: () => {} },
+    ])
   }
 
   async function handleFinished() {
@@ -45,33 +57,38 @@ export function Quiz() {
       title: quiz.title,
       level: quiz.level,
       points,
-      questions: quiz.questions.length
-    });
+      questions: quiz.questions.length,
+    })
 
     navigate('finish', {
       points: String(points),
       total: String(quiz.questions.length),
-    });
+    })
   }
 
   function handleNextQuestion() {
     if (currentQuestion < quiz.questions.length - 1) {
-      setCurrentQuestion(prevState => prevState + 1)
+      setCurrentQuestion((prevState) => prevState + 1)
     } else {
-      handleFinished();
+      handleFinished()
     }
   }
 
   async function handleConfirm() {
     if (alternativeSelected === null) {
-      return handleSkipConfirm();
+      return handleSkipConfirm()
     }
 
     if (quiz.questions[currentQuestion].correct === alternativeSelected) {
-      setPoints(prevState => prevState + 1);
+      setPoints((prevState) => prevState + 1)
+    } else {
+      shakeAnimation()
+      return
     }
 
-    setAlternativeSelected(null);
+    setAlternativeSelected(null)
+
+    handleNextQuestion()
   }
 
   function handleStop() {
@@ -83,24 +100,39 @@ export function Quiz() {
       {
         text: 'Sim',
         style: 'destructive',
-        onPress: () => navigate('home')
+        onPress: () => navigate('home'),
       },
-    ]);
+    ])
 
-    return true;
+    return true
   }
 
-  useEffect(() => {
-    const quizSelected = QUIZ.filter(item => item.id === id)[0];
-    setQuiz(quizSelected);
-    setIsLoading(false);
-  }, []);
+  function shakeAnimation() {
+    shake.value = withSequence(
+      withTiming(3, { duration: 400, easing: Easing.bounce }),
+      withTiming(0),
+    )
+  }
+
+  const shakeStyleAnimated = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          translateX: interpolate(
+            shake.value,
+            [0, 0.5, 1, 1.5, 2, 2.5, 0],
+            [0, -15, 0, 15, 0, -15, 0],
+          ),
+        },
+      ],
+    }
+  })
 
   useEffect(() => {
-    if (quiz.questions) {
-      handleNextQuestion();
-    }
-  }, [points]);
+    const quizSelected = QUIZ.filter((item) => item.id === id)[0]
+    setQuiz(quizSelected)
+    setIsLoading(false)
+  }, [])
 
   if (isLoading) {
     return <Loading />
@@ -118,18 +150,20 @@ export function Quiz() {
           totalOfQuestions={quiz.questions.length}
         />
 
-        <Question
-          key={quiz.questions[currentQuestion].title}
-          question={quiz.questions[currentQuestion]}
-          alternativeSelected={alternativeSelected}
-          setAlternativeSelected={setAlternativeSelected}
-        />
+        <Animated.View style={shakeStyleAnimated}>
+          <Question
+            key={quiz.questions[currentQuestion].title}
+            question={quiz.questions[currentQuestion]}
+            alternativeSelected={alternativeSelected}
+            setAlternativeSelected={setAlternativeSelected}
+          />
+        </Animated.View>
 
         <View style={styles.footer}>
           <OutlineButton title="Parar" onPress={handleStop} />
           <ConfirmButton onPress={handleConfirm} />
         </View>
       </ScrollView>
-    </View >
-  );
+    </View>
+  )
 }
