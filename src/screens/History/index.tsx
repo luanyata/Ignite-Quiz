@@ -6,6 +6,11 @@ import { Alert, ScrollView, TouchableOpacity, View } from 'react-native'
 import { Header } from '../../components/Header'
 import { HistoryCard, HistoryProps } from '../../components/HistoryCard'
 
+import Animated, {
+  Layout,
+  SlideInRight,
+  SlideOutRight,
+} from 'react-native-reanimated'
 import { Loading } from '../../components/Loading'
 import { historyGetAll, historyRemove } from '../../storage/quizHistoryStorage'
 import { styles } from './styles'
@@ -60,9 +65,16 @@ export function History() {
         showsVerticalScrollIndicator={false}
       >
         {history.map((item) => (
-          <TouchableOpacity key={item.id} onPress={() => handleRemove(item.id)}>
-            <HistoryCard data={item} />
-          </TouchableOpacity>
+          <Animated.View
+            key={item.id}
+            entering={SlideInRight}
+            exiting={SlideOutRight}
+            layout={Layout.springify()}
+          >
+            <TouchableOpacity onPress={() => handleRemove(item.id)}>
+              <HistoryCard data={item} />
+            </TouchableOpacity>
+          </Animated.View>
         ))}
       </ScrollView>
     </View>
